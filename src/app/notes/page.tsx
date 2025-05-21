@@ -34,13 +34,10 @@ const HighlightText = ({ text, searchQuery }: { text: string; searchQuery: strin
   );
 };
 
-interface NotesPageParams {
-  folderName?: string[];
-}
-
+// No need for explicit params interface as we're using client-side routing
 interface NotesPageProps {
-  params: NotesPageParams;
-  searchParams: { [key: string]: string | string[] | undefined };
+  // No need to define params and searchParams in the props interface
+  // as we're using the useSearchParams hook for client-side routing
 }
 
 // Helper function to convert URL-friendly name to display name
@@ -51,7 +48,7 @@ const formatFolderDisplayName = (name: string) => {
     .join(' ');
 };
 
-export default function NotesPage({ params }: NotesPageProps) {
+export default function NotesPage() {
   const { user, logout, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
