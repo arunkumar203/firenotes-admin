@@ -40,6 +40,7 @@ interface NotesPageParams {
 
 interface NotesPageProps {
   params: NotesPageParams;
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 // Helper function to convert URL-friendly name to display name
