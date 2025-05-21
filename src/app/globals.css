@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 17, 24, 39;
+    --background-end-rgb: 17, 24, 39;
+  }
+  
+  /* Force dark background for dropdowns and form elements */
+  select, option, input, textarea {
+    color: #1a202c !important; /* Dark gray text */
+    background-color: #ffffff !important; /* White background */
+  }
+  
+  /* Style for dropdown options */
+  option {
+    color: #1a202c !important; /* Dark gray text */
+    background-color: #ffffff !important; /* White background */
+  }
+  
+  /* Style for dropdown when it's open */
+  select:focus, input:focus, textarea:focus {
+    border-color: #3b82f6 !important; /* Blue border on focus */
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}

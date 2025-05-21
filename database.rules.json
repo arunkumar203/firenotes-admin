@@ -1,0 +1,97 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'root_admin')",
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'root_admin')",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'root_admin')",
+        "role": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'root_admin' && (newData.val() === 'user' || newData.val() === 'admin')"
+        },
+        "$other": {
+          ".write": "auth != null && (auth.uid === $uid || (root.child('users').child(auth.uid).child('role').val() === 'root_admin' && $other !== 'role' && auth.uid !== $uid))"
+        },
+        ".validate": "newData.hasChildren(['email', 'displayName', 'createdAt', 'lastLogin'])",
+        "email": {
+          ".validate": "newData.isString()"
+        },
+        "displayName": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "photoURL": {
+          ".validate": "newData.val() === null || newData.isString()"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "lastLogin": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    "folders": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": [
+        "userId",
+        "updatedAt"
+      ],
+      "$folderId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid)",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "noteIds": {
+          ".validate": "newData.val() === null || newData.hasChildren()"
+        },
+        "userId": {
+          ".validate": "newData.isString() && newData.val() === auth.uid"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    "notes": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": [
+        "userId",
+        "updatedAt",
+        "folderId"
+      ],
+      "$noteId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid)",
+        ".validate": "newData.child('userId').val() === auth.uid",
+        "title": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "content": {
+          ".validate": "newData.isString()"
+        },
+        "userId": {
+          ".validate": "newData.isString() && newData.val() === auth.uid"
+        },
+        "folderId": {
+          ".validate": "newData.val() === null || newData.isString()"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "contentLength": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    }
+  }
+}
