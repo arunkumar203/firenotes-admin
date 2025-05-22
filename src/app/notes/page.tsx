@@ -7,9 +7,10 @@ import { NoteWithId } from './useNotes';
 import { FiPlus, FiSearch, FiFolder, FiChevronDown, FiChevronRight, FiMenu, FiX } from 'react-icons/fi';
 import { useFolders } from './useFolders';
 import { useNotes } from './useNotes';
-import { FiTrash2, FiEdit } from 'react-icons/fi';
+import { FiTrash2, FiEdit, FiShare } from 'react-icons/fi';
 import { NoteEditor } from './components/NoteEditor';
 import { FolderList } from './components/FolderList';
+import Modal from '@/components/Modal'; // Updated import path for Modal
 import { toast } from 'react-hot-toast';
 
 // Highlight matching text in content
@@ -54,7 +55,11 @@ export default function NotesPage() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
   const pathname = usePathname();
-  
+
+  // State for Share Modal
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+
   // Get folder name from URL query parameter
   const folderNameFromUrl = searchParams.get('folder');
   
@@ -242,6 +247,37 @@ export default function NotesPage() {
     }
   };
 
+  const handleShareNote = (noteId: string) => {
+    const noteLink = `${window.location.origin}/notes?note=${noteId}`;
+    setShareLink(noteLink);
+    setIsShareModalOpen(true);
+    console.log("Sharing note:", noteId, "Link:", noteLink);
+  };
+
+  const handleOpenShareModalForFolder = (folderId: string, folderName: string) => {
+    const folderSlug = folderName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const folderLink = `${window.location.origin}/notes?folder=${folderSlug}`;
+    setShareLink(folderLink);
+    setIsShareModalOpen(true);
+    console.log("Sharing folder:", folderId, "Link:", folderLink);
+  };
+
+  const closeShareModal = () => {
+    setIsShareModalOpen(false);
+    setShareLink('');
+  };
+
+  const handleCopyLink = () => {
+    if (shareLink) {
+      navigator.clipboard.writeText(shareLink)
+        .then(() => toast.success('Link copied to clipboard!'))
+        .catch(err => {
+          console.error('Failed to copy link: ', err);
+          toast.error('Failed to copy link.');
+        });
+    }
+  };
+
   // Handle saving a note (create or update)
   const handleSaveNote = async (title: string, content: string, folderId: string | null) => {
     try {
@@ -288,6 +324,7 @@ export default function NotesPage() {
         onFolderSelect={handleFolderSelect}
         onCreateFolder={createFolder}
         onDeleteFolder={deleteFolder}
+        onShareFolder={handleOpenShareModalForFolder} // Pass the new handler
       />
 
       {/* Main content */}
@@ -430,6 +467,16 @@ export default function NotesPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                handleShareNote(note.id);
+                              }}
+                              className="text-gray-400 hover:bg-gray-200 p-1.5 rounded-md transition-colors duration-200"
+                              title="Share note"
+                            >
+                              <FiShare size={16} className="text-gray-500 hover:text-green-600" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 handleSelectNote(note.id);
                               }}
                               className="text-gray-400 hover:bg-gray-200 p-1.5 rounded-md transition-colors duration-200"
@@ -478,6 +525,32 @@ export default function NotesPage() {
           folderId={currentFolder?.id || null}
         />
       )}
+
+      {/* Share Modal */}
+      <Modal
+        isOpen={isShareModalOpen}
+        onClose={closeShareModal}
+        title="Share Link"
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Share this link:</p>
+            <input
+              type="text"
+              readOnly
+              value={shareLink}
+              className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onFocus={(e) => e.target.select()}
+            />
+          </div>
+          <button
+            onClick={handleCopyLink}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+          >
+            Copy Link
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

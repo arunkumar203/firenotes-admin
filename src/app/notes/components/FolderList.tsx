@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { FiFolder, FiPlus, FiTrash2, FiChevronDown, FiChevronRight } from 'react-icons/fi';
+import { FiFolder, FiPlus, FiTrash2, FiChevronDown, FiChevronRight, FiShare } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 
 export interface Folder {
@@ -21,6 +21,7 @@ interface FolderListProps {
   onFolderSelect: (folderId: string | null, folderName?: string) => void;
   onCreateFolder: (name: string) => void;
   onDeleteFolder: (folderId: string) => void;
+  onShareFolder: (folderId: string, folderName: string) => void; // Add new prop
 }
 
 export const FolderList = ({
@@ -29,6 +30,7 @@ export const FolderList = ({
   onFolderSelect,
   onCreateFolder,
   onDeleteFolder,
+  onShareFolder, // Destructure new prop
 }: FolderListProps) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -155,6 +157,17 @@ export const FolderList = ({
   // Sort folders by creation date (newest first)
   const sortedFolders = [...folders].sort((a, b) => b.createdAt - a.createdAt);
 
+  // This function will now call the onShareFolder prop passed from NotesPage
+  const handleShareFolderClick = (folderId: string, folderName: string) => {
+    if (onShareFolder) {
+      onShareFolder(folderId, folderName);
+    } else {
+      console.warn('onShareFolder prop not provided to FolderList');
+      // Fallback behavior if prop isn't passed, though it should be
+      toast.error('Share functionality is currently unavailable.');
+    }
+  };
+
   return (
     <div className="w-64 border-r border-gray-200 bg-white flex flex-col h-screen">
       <div className="flex flex-col h-full">
@@ -215,12 +228,25 @@ export const FolderList = ({
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
+                            handleShareFolderClick(folder.id, folder.name); // Use the updated handler
+                          }}
+                          className="text-gray-400 hover:text-green-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                          aria-label={`Share folder ${folder.name}`}
+                          title="Share folder"
+                        >
+                          <FiShare size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             if (window.confirm(`Delete folder "${folder.name}" and all its notes?`)) {
                               onDeleteFolder(folder.id);
                             }
                           }}
                           className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
                           aria-label={`Delete folder ${folder.name}`}
+                          title="Delete folder"
                         >
                           <FiTrash2 size={14} />
                         </button>
