@@ -224,20 +224,16 @@ export default function NotesPage() {
     // Sort notes based on the selected option
     switch (sortBy) {
       case 'newest':
-        result.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-        break;
+        return [...result].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
       case 'oldest':
-        result.sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
-        break;
+        return [...result].sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
       case 'longest':
-        result.sort((a, b) => (b.contentLength || 0) - (a.contentLength || 0));
-        break;
+        return [...result].sort((a, b) => (b.contentLength || 0) - (a.contentLength || 0));
       case 'shortest':
-        result.sort((a, b) => (a.contentLength || 0) - (b.contentLength || 0));
-        break;
+        return [...result].sort((a, b) => (a.contentLength || 0) - (b.contentLength || 0));
+      default:
+        return result;
     }
-
-    return result;
   }, [notes, currentFolder, searchQuery, sortBy]);
 
   // Handle folder selection
@@ -339,42 +335,42 @@ export default function NotesPage() {
     }
   };
 
+  // Define FolderEntry interface at the top level
+  interface FolderEntry {
+    id: string;
+    name: string;
+    notes: Array<{
+      id: string;
+      title?: string;
+      content?: string;
+      folderId?: string;
+      updatedAt?: any;
+    }>;
+  }
+
   // Generate PDF with structured table of contents and notes
   const generatePdf = async (preview = false) => {
-    setIsPdfLoading(true);
+    // Initialize all variables at the start of the function
     let pdfBlob: Blob | null = null;
     const filename = 'notes-export.pdf';
-
+    let doc: any = null;
+    
+    // Set loading state
+    setIsPdfLoading(true);
+    
     try {
-      // Dynamically import jsPDF
+      // Initialize PDF document
       const { jsPDF } = await import('jspdf');
-
-      // Create a new PDF document
-      const doc = new jsPDF();
+      doc = new jsPDF('p', 'mm', 'a4');
       
-      // Add a title to the PDF
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(20);
-      doc.text('Notes Export', 20, 20);
-      doc.setFontSize(12);
-      doc.setTextColor(100);
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
-      doc.setTextColor(0);
-      doc.setFont('helvetica', 'normal');
-
-      // Define types for our folder entries
-      interface FolderEntry {
-        id: string;
-        name: string;
-        notes: Array<{
-          id: string;
-          title?: string;
-          content?: string;
-          folderId?: string;
-          updatedAt?: any;
-        }>;
-      }
-
+      // Define layout constants
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const baseLineHeight = 7;
+      const sectionSpacing = 10;
+      let yPos = 60; // Start content below the header
+      
       // Create a map of folders with their notes
       const notesByFolder: Record<string, Array<{
         id: string;
@@ -383,14 +379,14 @@ export default function NotesPage() {
         folderId?: string;
         updatedAt?: any;
       }>> = {};
-
+      
       // Initialize with existing folders
-      folders.forEach(folder => {
+      folders.forEach((folder: { id: string }) => {
         notesByFolder[folder.id] = [];
       });
-
+      
       // Add notes to their respective folders
-      filteredNotes.forEach((note) => {
+      filteredNotes.forEach((note: { folderId?: string; id: string; title?: string; content?: string; updatedAt?: any }) => {
         if (note.folderId && !notesByFolder[note.folderId]) {
           // If folder doesn't exist in our folders list, skip it
           return;
@@ -399,52 +395,65 @@ export default function NotesPage() {
         if (!notesByFolder[folderId]) {
           notesByFolder[folderId] = [];
         }
-        notesByFolder[folderId].push(note);
+        notesByFolder[folderId].push({
+          id: note.id,
+          title: note.title,
+          content: note.content,
+          folderId: note.folderId,
+          updatedAt: note.updatedAt
+        });
       });
-
+      
       // Get all folder entries that exist in our folders list
-      const folderEntries: FolderEntry[] = folders.map(folder => ({
+      const folderEntries: FolderEntry[] = folders.map((folder: any) => ({
         id: folder.id,
         name: folder.name,
         notes: notesByFolder[folder.id] || []
       }));
-
-      // Table of Contents on first page
-      doc.setFontSize(20);
-      doc.text('Table of Contents', 105, 20, { align: 'center' });
+      
+      // Add header with title, user email, and timestamp
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text('NOTES EXPORT', 105, 20, { align: 'center' });
+      
+      // Add user email
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(12);
-      doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 30, { align: 'center' });
-
-      let yPos = 40;
-
+      doc.text(`User: ${user?.email || 'Unknown'}`, 20, 35);
+      
+      // Add formatted date and time (dd/mm/yyyy, hh:mm:ss AM/PM)
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString('en-GB');
+      const formattedTime = now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      doc.text(`Generated on: ${formattedDate}, ${formattedTime}`, 20, 42);
+      
+      // Add a line separator
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, 48, 190, 48);
+      
       // Add TOC entries for all folders
       folderEntries.forEach((folder: any, folderIndex: number) => {
-        // Create a unique anchor for this folder
-        const folderAnchor = `folder_${folderIndex}`;
-
+        const folderAnchorId = `folder_${folderIndex}`;
+        
         // Add folder to TOC with number - bold and larger
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        // Add folder text with link
-        const folderText = `${folderIndex + 1}. ${folder.name}`;
-        // Add text with link (jsPDF 3.0.1 uses 'link' option for clickable text)
-        // @ts-ignore - The link option exists in jsPDF but not in the TypeScript types
-        doc.text(folderText, 20, yPos, { link: `#folder_${folderIndex}` });
-        yPos += 10;
-
+        doc.setFontSize(12);
+        doc.text(`${folderIndex + 1}. ${folder.name}`, 20, yPos);
+        yPos += 7;
+        
         // Add notes under folder in TOC - normal weight and smaller
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(12);
         folder.notes.forEach((note: { title?: string }, index: number) => {
           const noteTitle = note.title || 'Untitled Note';
-          const noteAnchor = `note_${folderIndex}_${index}`;
-          // Add note text with link
           const noteText = `  ${String.fromCharCode(97 + index)}) ${noteTitle}`;
-          // Add text with link (jsPDF 3.0.1 uses 'link' option for clickable text)
-          // @ts-ignore - The link option exists in jsPDF but not in the TypeScript types
-          doc.text(noteText, 30, yPos, { link: `#note_${folderIndex}_${index}` });
-          yPos += 7;
-
+          doc.text(noteText, 30, yPos);
+          yPos += 5;
+          
           // Add new page if needed
           if (yPos > 260) {
             doc.addPage();
@@ -452,36 +461,30 @@ export default function NotesPage() {
             yPos = 30;
           }
         });
-
+        
         yPos += 5;
       });
-
+      
       // Add detailed notes on a new page
       doc.addPage();
-      doc.setFontSize(16);
-      doc.text('Notes Export', 105, 20, { align: 'center' });
-      yPos = 40;
-
+      
+      // Reset yPos for the new page
+      yPos = 20;
+      
       // Indentation settings (in mm)
       const folderIndent = 20;    // Folder indentation from left
       const noteIndent = 30;      // Note title indentation from left
       const contentIndent = 40;   // Content indentation from left
       const contentWidth = 160;   // Content width
-
-      // Add notes by folder with numbers
+      
+      // Process each folder's notes in detail
       folderEntries.forEach((folder: any, folderIndex: number) => {
-
-        // Add folder header with number - largest and bold (with anchor)
+        // Add folder header with number - largest and bold
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);
-        const folderAnchor = `folder_${folderIndex}`;
-        // Add folder header with destination
-        const folderHeader = `${folderIndex + 1}. ${folder.name}`;
-        // Add text with destination (anchor) for this section
-        // @ts-ignore - The destination option exists in jsPDF but not in the TypeScript types
-        doc.text(folderHeader, folderIndent, yPos, { destination: `folder_${folderIndex}` });
+        doc.text(`${folderIndex + 1}. ${folder.name}`, folderIndent, yPos);
         yPos += 10;
-
+        
         // Add notes under folder or message if no notes
         if (folder.notes.length === 0) {
           doc.setFont('helvetica', 'italic');
@@ -491,77 +494,49 @@ export default function NotesPage() {
         } else {
           folder.notes.forEach((note: { title?: string; content?: string }, index: number) => {
             const noteTitle = note.title || 'Untitled Note';
-
-            // Add note title - indented from folder (with anchor)
+            
+            // Add note title - indented from folder
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(14);
-            const noteAnchor = `note_${folderIndex}_${index}`;
-            doc.text(
-              `${String.fromCharCode(97 + index)}) ${noteTitle}`,
-              noteIndent,
-              yPos
-            );
-            yPos += 8;
-
-            // Add note content - indented from title
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(12);
-            const content = note.content || 'No content';
-            const splitText = doc.splitTextToSize(content, contentWidth);
-
-            // Page settings - maximized for content
-            const lineHeight = 5.5;         // Compact line height
-            const pageHeight = 297;         // A4 height in mm (210mm x 297mm)
-            const marginTop = 15;           // Top margin in mm
-            const marginBottom = 10;         // Bottom margin in mm
-
-            // Process each line of text
-            let remainingText = [...splitText];
-
-            while (remainingText.length > 0) {
-              // Calculate available space more precisely
-              const availableSpace = pageHeight - yPos - marginBottom;
-              const linesThatFit = Math.max(1, Math.floor(availableSpace / lineHeight));
-
-              // If we can't fit any lines, start a new page
-              if (linesThatFit <= 0) {
-                doc.addPage('a4', 'portrait');
-                yPos = marginTop;
-                continue;
-              }
-
-              // Take only the lines that fit on current page
-              const linesForThisPage = remainingText.splice(0, linesThatFit);
-
-              // Add the lines to the current page with proper indentation
-              doc.text(linesForThisPage, contentIndent, yPos, { maxWidth: contentWidth });
-              yPos += linesForThisPage.length * lineHeight + 1;  // Minimal space between paragraphs
-
-              // Only add new page if we can't fit the next line
-              if (remainingText.length > 0 && yPos + lineHeight > pageHeight - marginBottom) {
-                doc.addPage('a4', 'portrait');
-                yPos = marginTop;
-              }
+            doc.text(`${String.fromCharCode(97 + index)}) ${noteTitle}`, noteIndent, yPos);
+            yPos += 7;
+            
+            // Add note content
+            if (note.content) {
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(12);
+              const splitText = doc.splitTextToSize(note.content, contentWidth);
+              doc.text(splitText, contentIndent, yPos);
+              yPos += splitText.length * 6; // Approximate line height
+            }
+            
+            yPos += 10; // Add space between notes
+            
+            // Add new page if needed
+            if (yPos > 270) {
+              doc.addPage();
+              yPos = 20;
             }
           });
         }
-
-        yPos += 5;
+        
+        yPos += 10; // Add extra space between folders
       });
-
+      
       // Generate the PDF as a blob
-      const pdfBlob = doc.output('blob');
-
+      const generatedPdfBlob = doc.output('blob');
+      pdfBlob = generatedPdfBlob; // Assign to outer scope variable
+      
       if (preview) {
         // For preview, set the URL for the modal
-        const pdfUrl = URL.createObjectURL(pdfBlob);
+        const pdfUrl = URL.createObjectURL(generatedPdfBlob);
         setPdfPreviewUrl(pdfUrl);
       } else {
         // For download, save the file
         doc.save('notes-export.pdf');
         toast.success('PDF exported successfully!');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating PDF:', error);
       toast.error('Failed to generate PDF');
     } finally {
@@ -576,14 +551,8 @@ export default function NotesPage() {
     try {
       // Create a link element
       const link = document.createElement('a');
-      
-      // Set the href to the blob URL
       link.href = pdfPreviewUrl;
-      
-      // Force the download attribute with the desired filename
-      link.setAttribute('download', 'notes-export.pdf');
-      
-      // Append to body, click and remove
+      link.download = 'notes-export.pdf';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -595,42 +564,49 @@ export default function NotesPage() {
     }
   };
 
-  // Handle saving a note (create or update)
-  const handleSaveNote = async (title: string, content: string, folderId: string | null) => {
+  // Handle saving a note
+  const handleSaveNote = async (title: string, content: string, folderId: string | undefined = undefined) => {
     try {
       if (selectedNoteId) {
-        // Update existing note with folderId
-        await updateNote(selectedNoteId, {
-          title,
-          content,
+        // Update existing note
+        await updateNote(selectedNoteId, { 
+          title, 
+          content, 
+          folderId, // Pass undefined if not provided, which will be handled by the hook
           updatedAt: Date.now(),
-          contentLength: content.length,
-          folderId: folderId || undefined
+          contentLength: content.length
         });
       } else {
-        // Create new note with the selected folder
-        await createNote(title, content, folderId || null);
+        // Create new note - pass folderId as is (can be undefined)
+        await createNote(title, content, folderId);
       }
-
-      // Close the editor after successful save
+      
+      // Close the editor and reset state
       setIsEditorOpen(false);
       setSelectedNoteId(null);
       setCurrentNote(null);
+      
+      toast.success(selectedNoteId ? 'Note updated successfully!' : 'Note created successfully!');
     } catch (error) {
       console.error('Error saving note:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to save note';
       toast.error(errorMessage);
-      throw error; // Re-throw to let the editor handle the error state
+    }
+  };
+
+  // Handle closing the PDF preview modal
+  const handleClosePdfPreview = () => {
+    if (pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
     }
   };
 
   // Get the currently selected note from the hook
   const selectedNote = useMemo(
-    () => selectedNoteId ? notes.find(note => note.id === selectedNoteId) || null : currentNote,
+    () => selectedNoteId ? (notes || []).find((note: NoteWithId) => note.id === selectedNoteId) || null : currentNote,
     [selectedNoteId, currentNote, notes]
   );
-
-  // ...
 
   return (
     <div className="flex h-screen bg-gray-50">

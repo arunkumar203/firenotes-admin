@@ -318,8 +318,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setUser(updatedUser);
 
-      // The navigation will be handled by the useEffect that watches for user changes
+      // Show success toast
       toast.success('Successfully logged in!');
+      
+      // Show welcome back toast if it's been more than 2 days
+      if (previousLogin && (currentLogin - previousLogin) >= 2 * 24 * 60 * 60 * 1000) {
+        toast(`Welcome back! You haven't logged in for ${Math.floor((currentLogin - previousLogin) / (24 * 60 * 60 * 1000))} days.`, {
+          duration: 5000,
+          icon: '👋',
+          position: 'top-center'
+        });
+      }
     } catch (error: any) {
       console.error('Error signing in:', error);
       toast.error(error.message || 'Failed to log in');
@@ -516,13 +525,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           ...userData
         });
 
-        // Show welcome message for new users
-        toast(newUserMessage.content, {
-          duration: 5000,
-          icon: '👋',
-          position: 'top-center'
-        });
-        // No success toast for new users, only show the welcome message
+        // Show success toast for new users
+        setTimeout(() => {
+          toast.success('Successfully signed in with Google!');
+          // Show welcome message for new users
+          toast(newUserMessage.content, {
+            duration: 5000,
+            icon: '👋',
+            position: 'top-center'
+          });
+        }, 100);
       } else {
         // Existing user - update login times and photoURL if needed
         const existingData = snapshot.val();
@@ -590,14 +602,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Update in database
         await update(userRef, updateData);
 
-        // Show toast for welcome back message if it's been more than 2 days
-        if (daysSinceLastLogin >= 2) {
-          toast(`You haven't logged in for ${daysSinceLastLogin} days. Welcome back!`, {
-            duration: 5000,
-            icon: '👋',
-            position: 'top-center'
-          });
-        }
+        // Show success toast and welcome back message if it's been more than 2 days
+        setTimeout(() => {
+          toast.success('Successfully signed in with Google!');
+          if (daysSinceLastLogin >= 2) {
+            toast(`Welcome back! You haven't logged in for ${daysSinceLastLogin} days.`, {
+              duration: 5000,
+              icon: '👋',
+              position: 'top-center'
+            });
+          }
+        }, 100);
 
       }
 
