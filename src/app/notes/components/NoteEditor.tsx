@@ -153,7 +153,6 @@ export const NoteEditor = ({
           
           // Then save the updated content
           await onSave(trimmedTitle, trimmedContent, selectedFolderId);
-          toast.success('Note updated successfully');
           onClose();
           return;
         }
@@ -161,7 +160,6 @@ export const NoteEditor = ({
       
       // For all other cases (new note or just content change)
       await onSave(trimmedTitle, trimmedContent, selectedFolderId);
-      toast.success(note?.id ? 'Note updated successfully' : 'Note created successfully');
       
       // Reset form state after successful save for new notes
       if (!note?.id) {

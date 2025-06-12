@@ -506,13 +506,46 @@ export default function NotesPage() {
               doc.setFont('helvetica', 'normal');
               doc.setFontSize(12);
               const splitText = doc.splitTextToSize(note.content, contentWidth);
-              doc.text(splitText, contentIndent, yPos);
-              yPos += splitText.length * 6; // Approximate line height
+              
+              // Calculate how much space this note will take
+              const noteHeight = splitText.length * 6; // Approximate line height
+              
+              // Check if we need a new page before adding this note
+              if (yPos + noteHeight > 270) { // 270mm is roughly the height of A4 minus margins
+                doc.addPage();
+                yPos = 20; // Reset Y position for new page
+                
+                // Add folder and note title again if we're on a new page
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(16);
+                doc.text(`${folderIndex + 1}. ${folder.name}`, folderIndent, yPos);
+                yPos += 10;
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.text(`${String.fromCharCode(97 + index)}) ${noteTitle}`, noteIndent, yPos);
+                yPos += 7;
+                
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(12);
+              }
+              
+              // Add the note content
+              const lines = [];
+              for (let i = 0; i < splitText.length; i++) {
+                // Check if we need a new page for the next line
+                if (yPos > 270) {
+                  doc.addPage();
+                  yPos = 20;
+                }
+                doc.text(splitText[i], contentIndent, yPos);
+                yPos += 6; // Line height
+              }
             }
             
             yPos += 10; // Add space between notes
             
-            // Add new page if needed
+            // Add new page if we're too close to the bottom
             if (yPos > 270) {
               doc.addPage();
               yPos = 20;
